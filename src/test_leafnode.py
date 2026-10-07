@@ -14,5 +14,20 @@ class TestLeafNode(unittest.TestCase):
         node = LeafNode(None, "Hello, world!")
         self.assertEqual(node.to_html(), "Hello, world!")
 
+    def test_missing_value_raises(self):
+        with self.assertRaisesRegex(ValueError, "requires a value"):
+            LeafNode("p", None).to_html()
+
+    def test_empty_plain_text_is_allowed(self):
+        self.assertEqual(LeafNode(None, "").to_html(), "")
+
+    def test_empty_tagged_text_is_allowed(self):
+        self.assertEqual(LeafNode("p", "").to_html(), "<p></p>")
+
+    def test_image_has_no_closing_tag(self):
+        node = LeafNode("img", "", {"src": "cat.png", "alt": "cat"})
+        self.assertEqual(node.to_html(), '<img src="cat.png" alt="cat">')
+
+
 if __name__ == "__main__":
     unittest.main()
