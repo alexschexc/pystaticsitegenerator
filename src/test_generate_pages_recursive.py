@@ -17,9 +17,9 @@ class TestGeneratePagesRecursive(unittest.TestCase):
         self.template = self.root / "template.html"
         self.template.write_text("<title>{{ Title }}</title>{{ Content }}", encoding="utf-8")
 
-    def generate(self):
+    def generate(self, basepath="/"):
         with contextlib.redirect_stdout(io.StringIO()):
-            generate_pages_recursive(str(self.content), str(self.template), str(self.destination))
+            generate_pages_recursive(str(self.content), str(self.template), str(self.destination), basepath)
 
     def test_root_and_nested_pages(self):
         (self.content / "index.md").write_text("# Home", encoding="utf-8")
@@ -39,6 +39,14 @@ class TestGeneratePagesRecursive(unittest.TestCase):
             {p.relative_to(self.destination).as_posix() for p in self.destination.rglob("*.html")},
             {"index.html", "blog/post/index.html"},
         )
+
+    def test_basepath_reaches_nested_pages(self):
+        nested = self.content / "blog" / "post"
+        nested.mkdir(parents=True)
+        (nested / "index.md").write_text("# Post\n\n[home](/)", encoding="utf-8")
+        self.generate("/pystaticsitegenerator/")
+        page = (self.destination / "blog/post/index.html").read_text(encoding="utf-8")
+        self.assertIn('href="/pystaticsitegenerator/"', page)
 
     def test_non_markdown_files_are_ignored(self):
         (self.content / "notes.txt").write_text("Not Markdown", encoding="utf-8")

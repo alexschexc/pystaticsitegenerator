@@ -20,10 +20,10 @@ class TestGeneratePage(unittest.TestCase):
             encoding="utf-8",
         )
 
-    def generate(self):
+    def generate(self, basepath="/"):
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
-            generate_page(str(self.markdown), str(self.template), str(self.destination))
+            generate_page(str(self.markdown), str(self.template), str(self.destination), basepath)
         return output.getvalue()
 
     def test_generates_html_and_creates_parent_directories(self):
@@ -48,6 +48,31 @@ class TestGeneratePage(unittest.TestCase):
         self.generate()
         self.assertEqual(self.destination.read_text(encoding="utf-8"),
             "<title>Café</title><article><div><h1>Café</h1><p>こんにちは</p></div></article>")
+
+    def test_production_basepath_rewrites_only_root_relative_urls(self):
+        self.markdown.write_text(
+            "# Hello\n\n[home](/) ![cat](/images/cat.png) "
+            "[external](https://example.com) [relative](notes.html)",
+            encoding="utf-8",
+        )
+        self.template.write_text(
+            '<link href="/index.css"><title>{{ Title }}</title>{{ Content }}',
+            encoding="utf-8",
+        )
+        self.generate("/pystaticsitegenerator/")
+        page = self.destination.read_text(encoding="utf-8")
+        self.assertIn('href="/pystaticsitegenerator/index.css"', page)
+        self.assertIn('href="/pystaticsitegenerator/"', page)
+        self.assertIn('src="/pystaticsitegenerator/images/cat.png"', page)
+        self.assertIn('href="https://example.com"', page)
+        self.assertIn('href="notes.html"', page)
+
+    def test_local_basepath_preserves_root_relative_urls(self):
+        self.markdown.write_text("# Hello\n\n[home](/) ![cat](/images/cat.png)", encoding="utf-8")
+        self.generate()
+        page = self.destination.read_text(encoding="utf-8")
+        self.assertIn('href="/"', page)
+        self.assertIn('src="/images/cat.png"', page)
 
     def test_missing_title_does_not_write_output(self):
         self.markdown.write_text("No heading here.", encoding="utf-8")
